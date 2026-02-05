@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>User Management Dashboard</title>
+  </head>
+
+  <body>
+    <h1>User Management Dashboard</h1>
+
+    <form onsubmit="return false;">
+      <label>
+        Name
+        <input type="text" id="name" required />
+      </label>
+
+      <label>
+        Email
+        <input type="email" id="email" required />
+      </label>
+
+      <label>
+        Role
+        <select id="role">
+          <option>Admin</option>
+          <option>User</option>
+          <option>Viewer</option>
+        </select>
+      </label>
+
+      <button id="addBtn">Add User</button>
+    </form>
+
+    <p>Data stored in LocalStorage</p>
+
+    <table id="usersTable" border="1" cellpadding="6">
+      <thead>
+        <tr>
+          <th data-key="name">Name ▲/▼</th>
+          <th data-key="email">Email ▲/▼</th>
+          <th data-key="role">Role ▲/▼</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+
+    <script>
+      const STORAGE_KEY = "users_v1";
+      let users = [];
+      let sortState = { key: "name", dir: 1 };
+
+      const nameEl = document.getElementById("name");
+      const emailEl = document.getElementById("email");
+      const roleEl = document.getElementById("role");
+      const addBtn = document.getElementById("addBtn");
+      const usersTbody = document.querySelector("#usersTable tbody");
+      const ths = document.querySelectorAll("#usersTable thead th[data-key]");
+
+      function load() {
+        const data = localStorage.getItem(STORAGE_KEY);
+        users = data ? JSON.parse(data) : initialUsers.slice();
+        save();
+        render();
+      }
+
+      function save() {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(users));
+      }
+
+      function addUser() {
+        const name = nameEl.value.trim();
+        const email = emailEl.value.trim();
+        const role = roleEl.value;
+
+        if (!name || !email) {
+          alert("Name and Email are required");
+          return;
+        }
+
+        const id = (users.reduce((max, u) => Math.max(max, u.id), 0) || 0) + 1;
+
+        users.push({ id, name, email, role });
+        save();
+        nameEl.value = "";
+        emailEl.value = "";
+        roleEl.value = "Admin";
+        render();
+      }
+
+      function deleteUser(id) {
+        if (!confirm("Delete this user?")) return;
+        users = users.filter((u) => u.id !== id);
+        save();
+        render();
+      }
+
+      function render() {
+        const data = [...users].sort((a, b) => {
+          const av = a[sortState.key].toLowerCase();
+          const bv = b[sortState.key].toLowerCase();
+          return av < bv ? -1 * sortState.dir : av > bv ? 1 * sortState.dir : 0;
+        });
+
+        usersTbody.innerHTML = data
+          .map(
+            (u) => `
+          <tr>
+            <td>${escapeHtml(u.name)}</td>
+            <td>${escapeHtml(u.email)}</td>
+            <td>${escapeHtml(u.role)}</td>
+            <td>
+              <button onclick="deleteUser(${u.id})">Delete</button>
+            </td>
+          </tr>
+        `,
+          )
+          .join("");
+      }
+
+      function escapeHtml(str) {
+        return String(str)
+          .replaceAll("&", "&amp;")
+          .replaceAll("<", "&lt;")
+          .replaceAll(">", "&gt;")
+          .replaceAll('"', "&quot;");
+      }
+
+      addBtn.addEventListener("click", addUser);
+
+      ths.forEach((th) => {
+        th.addEventListener("click", () => {
+          const key = th.dataset.key;
+          sortState.dir = sortState.key === key ? -sortState.dir : 1;
+          sortState.key = key;
+          render();
+        });
+      });
+
+      window.deleteUser = deleteUser;
+      load();
+    </script>
+  </body>
+</html>
